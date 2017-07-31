@@ -5,10 +5,15 @@ import * as indicative from 'indicative';
 
 export class OneEpay {
   private accessToken: string;
+  private signature: string;
 
-  constructor(private apiURL: string, private clientId: string, private clientSecret: string) {}
+  constructor(private apiURL: string, private clientId: string, private clientSecret: string) {
+    if (!apiURL) throw new OneEpayError('Missing OneEpay apiUrl.');
+    else if (!clientId) throw new OneEpayError('Missing OneEpay clientId.');
+    else if (!clientSecret) throw new OneEpayError('Missing OneEpay clientSecret.');
+  }
 
-  async authenticate() {
+  async authenticate(): Promise<void> {
     const log = debug('oneepay:authenticate');
     const data = `${this.clientId}:${this.clientSecret}`;
     log('authentication data', data);
@@ -36,7 +41,8 @@ export class OneEpay {
 
   async createTransaction(options: CreateTransactionOptions) {
     const log = debug('oneepay:create-transaction');
-    log('create transaction options', options);
+    log('options', options);
+    if (!this.accessToken) throw new CreateTransactionError('Missing authentication. Did you call authenticate first?');
     await this.validateCreateTransaction(options);
 
     try {
@@ -63,8 +69,7 @@ export class OneEpay {
         { name: orderName, qty: options.totalQuantity, unit_price: options.totalAmount }
       ];
 
-      const data = order_id + total_amt + total_qty + ip + this.clientId + this.clientSecret;
-      const signature = crypto.createHash('sha1').update(data).digest('base64');
+      this.makeSignature({ UID: order_id, totalAmount: total_amt, totalQuantity: total_qty, ip });
 
       const response = await axios.post(
         `${this.apiURL}/v1/payments/transactions`,
@@ -74,7 +79,7 @@ export class OneEpay {
           total_amt,
           total_qty,
           currency_code: 'USD',
-          signature,
+          signature: this.signature,
           payment_code,
           payment_options,
           items,
@@ -83,14 +88,52 @@ export class OneEpay {
         { headers: { 'X-Auth': `Bearer ${this.accessToken}` } }
       );
       log('response', response.data);
+      const result: CreateTransactionResponse = response.data;
 
-      return response.data;
+      return result;
     } catch (error) {
       this.handleOneEpayError(error);
     }
   }
 
-  async completeTransaction() {}
+  async completeTransaction(options: CompleteTransactionOptions) {
+    const log = debug('oneepay:complete-transaction');
+    log('options', options);
+    if (!this.accessToken) {
+      throw new CompleteTransactionError('Missing authentication. Did you call authenticate first?');
+    }
+
+    await this.validateCompleteTransaction(options);
+
+    const { UID, totalAmount, totalQuantity, txid, securityCode } = options;
+    const ip = options.ip || 'Unknown IP';
+
+    this.makeSignature({ UID, totalAmount, totalQuantity, ip });
+
+    try {
+      const response = await axios.post(
+        `${this.apiURL}/v1/payments/transactions/commit`,
+        {
+          txid,
+          signature: this.signature,
+          security_code: securityCode,
+          ip
+        },
+        { headers: { 'X-Auth': `Bearer ${this.accessToken}` } }
+      );
+      log('response', response.data);
+      const result: CompleteTransactionResponse = response.data;
+
+      return result;
+    } catch (error) {
+      this.handleOneEpayError(error);
+    }
+  }
+
+  private makeSignature({ UID, totalAmount, totalQuantity, ip }: MakeSignatureOptions) {
+    const data = UID + totalAmount + totalQuantity + ip + this.clientId + this.clientSecret;
+    this.signature = crypto.createHash('sha1').update(data).digest('base64');
+  }
 
   private handleOneEpayError(error: AxiosError) {
     if (!error.response) throw error;
@@ -134,6 +177,26 @@ export class OneEpay {
       throw new CreateTransactionError(errors[0].message);
     });
   }
+
+  private async validateCompleteTransaction(options: CompleteTransactionOptions) {
+    if (typeof options !== 'object') throw new CompleteTransactionError('Invalid argument type.');
+    const rules = {
+      UID: 'required|string',
+      totalAmount: 'required|string|is_money',
+      totalQuantity: 'required|integer',
+      txid: 'required',
+      securityCode: 'required'
+    };
+    const messages = {
+      required: '{{field}} field is missing.',
+      string: '{{field}} must be a string.',
+      integer: '{{field}} must be an integer.',
+      is_money: '{{field}} contains invalid amount.'
+    };
+    await indicative.validate(options, rules, messages).catch((errors: any) => {
+      throw new CompleteTransactionError(errors[0].message);
+    });
+  }
 }
 
 const isMoney = function(data: any, field: any, message: string, args: any[], get: Function) {
@@ -157,18 +220,83 @@ class CreateTransactionError extends Error {
   }
 }
 
+class CompleteTransactionError extends Error {
+  constructor(message: string) {
+    super();
+    this.name = 'CompleteTransactionError';
+    this.message = message;
+  }
+}
+
+class OneEpayError extends Error {
+  constructor(message: string) {
+    super();
+    this.name = 'OneEpayError';
+    this.message = message;
+  }
+}
+
 export interface CreateTransactionOptions {
   UID: string;
-  description?: string;
   totalAmount: string;
   totalQuantity: number;
   paymentCode: PaymentCode;
   paymentOptions: PaymentOptions;
-  items?: TransactionItem[];
+  description?: string;
+  deviceUDID?: string;
   ip?: string;
   lat?: string;
   lng?: string;
-  deviceUDID?: string;
+  items?: TransactionItem[];
+}
+
+export interface CreateTransactionResponse {
+  txid: number;
+  state: string;
+  expires_in_sec: number;
+  uid: string;
+  description: string;
+  total_qty: 1;
+  total_amt: string;
+  currency_code: string;
+  payment_transaction_id: number;
+  payment_code: string;
+  instructions: string;
+  payment_options: {
+    account?: string;
+    account_type?: string;
+    point_id?: string;
+    wing_account?: string;
+    wing_security_code?: string;
+  };
+  customer: {
+    ip: string;
+    latitude: string;
+    longitude: string;
+    udid: string;
+  };
+  items: TransactionItem[];
+}
+
+export interface CompleteTransactionOptions {
+  UID: string;
+  totalAmount: string;
+  totalQuantity: number;
+  txid: string;
+  securityCode: string;
+  ip?: string;
+}
+
+export interface CompleteTransactionResponse {
+  uid: string;
+  state: string;
+}
+
+export interface MakeSignatureOptions {
+  UID: string;
+  totalAmount: string;
+  totalQuantity: number;
+  ip: string;
 }
 
 export interface TransactionItem {
