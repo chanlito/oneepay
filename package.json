@@ -1,9 +1,10 @@
 {
   "name": "oneepay",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "The official library for OneEpay.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typings": "./dist/index.d.ts",
   "scripts": {
     "prepare": "npm run build",
     "build": "tsc",
@@ -13,14 +14,13 @@
   "author": "Bruce Hem <bruce.hem@pathmazing.com>",
   "repository": {
     "url": "https://github.com/BruceHem/oneepay.git",
-    "type": "https"
+    "type": "git"
   },
   "devDependencies": {
     "tslint": "^5.5.0",
     "typescript": "^2.4.2"
   },
   "dependencies": {
-    "@types/axios": "^0.14.0",
     "@types/debug": "^0.0.29",
     "@types/node": "^8.0.17",
     "axios": "^0.16.2",
