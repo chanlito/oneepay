@@ -1,6 +1,6 @@
 {
   "name": "oneepay",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The official library for OneEpay.",
   "main": "dist/index.js",
   "scripts": {
