@@ -4,12 +4,15 @@
   "description": "The official library for OneEpay.",
   "main": "dist/index.js",
   "scripts": {
-    "prepublish": "npm run build",
+    "prepare": "npm run build",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Bruce Hem <bruce.hem@pathmazing.com>",
-  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/BruceHem/oneepay.git",
+    "type": "https"
+  },
   "devDependencies": {
     "tslint": "^5.5.0",
     "typescript": "^2.4.2"
