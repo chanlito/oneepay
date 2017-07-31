@@ -16,4 +16,4 @@ yarn add oneepay
 ```
 
 ## License
-No License
+MIT
