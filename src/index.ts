@@ -13,35 +13,12 @@ export class OneEpay {
     else if (!clientSecret) throw new OneEpayError('Missing OneEpay clientSecret.');
   }
 
-  async authenticate(): Promise<void> {
-    const log = debug('oneepay:authenticate');
-    const data = `${this.clientId}:${this.clientSecret}`;
-    log('authentication data', data);
-    const authentication = crypto.createHash('sha1').update(data).digest('base64');
-    log('authentication', authentication);
-    const apiEndpoint = `${this.apiURL}/v1/oauth/access-token`;
-    log('api endpoint', apiEndpoint);
-    try {
-      const response = await axios.post(
-        apiEndpoint,
-        {
-          client_id: this.clientId,
-          permission: 'client_credentials'
-        },
-        {
-          headers: { authentication }
-        }
-      );
-      this.accessToken = response.data.access_token;
-      log('access token', this.accessToken);
-    } catch (error) {
-      this.handleOneEpayError(error);
-    }
-  }
-
   async createTransaction(options: CreateTransactionOptions) {
     const log = debug('oneepay:create-transaction');
     log('options', options);
+
+    await this.authenticate();
+
     if (!this.accessToken) throw new CreateTransactionError('Missing authentication. Did you call authenticate first?');
     await this.validateCreateTransaction(options);
 
@@ -66,8 +43,9 @@ export class OneEpay {
       const longitude = options.lng || 'Unknown Longitude';
       const udid = options.deviceUDID || 'Unknown Device UDID';
       const items = options.items || [
-        { name: orderName, qty: options.totalQuantity, unit_price: options.totalAmount }
+        { name: orderName, qty: 1, unit_price: options.totalAmount }
       ];
+      log('items', items);
 
       this.makeSignature({ UID: order_id, totalAmount: total_amt, totalQuantity: total_qty, ip });
 
@@ -99,6 +77,9 @@ export class OneEpay {
   async completeTransaction(options: CompleteTransactionOptions) {
     const log = debug('oneepay:complete-transaction');
     log('options', options);
+
+    await this.authenticate();
+
     if (!this.accessToken) {
       throw new CompleteTransactionError('Missing authentication. Did you call authenticate first?');
     }
@@ -125,6 +106,32 @@ export class OneEpay {
       const result: CompleteTransactionResponse = response.data;
 
       return result;
+    } catch (error) {
+      this.handleOneEpayError(error);
+    }
+  }
+
+  private async authenticate(): Promise<void> {
+    const log = debug('oneepay:authenticate');
+    const data = `${this.clientId}:${this.clientSecret}`;
+    log('authentication data', data);
+    const authentication = crypto.createHash('sha1').update(data).digest('base64');
+    log('authentication', authentication);
+    const apiEndpoint = `${this.apiURL}/v1/oauth/access-token`;
+    log('api endpoint', apiEndpoint);
+    try {
+      const response = await axios.post(
+        apiEndpoint,
+        {
+          client_id: this.clientId,
+          permission: 'client_credentials'
+        },
+        {
+          headers: { authentication }
+        }
+      );
+      this.accessToken = response.data.access_token;
+      log('access token', this.accessToken);
     } catch (error) {
       this.handleOneEpayError(error);
     }
