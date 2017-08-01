@@ -18,8 +18,6 @@ export class OneEpay {
     log('options', options);
 
     await this.authenticate();
-
-    if (!this.accessToken) throw new CreateTransactionError('Missing authentication. Did you call authenticate first?');
     await this.validateCreateTransaction(options);
 
     try {
@@ -42,9 +40,7 @@ export class OneEpay {
       const latitude = options.lat || 'Unknown Latitude';
       const longitude = options.lng || 'Unknown Longitude';
       const udid = options.deviceUDID || 'Unknown Device UDID';
-      const items = options.items || [
-        { name: orderName, qty: 1, unit_price: options.totalAmount }
-      ];
+      const items = options.items || [ { name: orderName, qty: 1, unit_price: total_amt } ];
       log('items', items);
 
       this.makeSignature({ UID: order_id, totalAmount: total_amt, totalQuantity: total_qty, ip });
@@ -79,11 +75,6 @@ export class OneEpay {
     log('options', options);
 
     await this.authenticate();
-
-    if (!this.accessToken) {
-      throw new CompleteTransactionError('Missing authentication. Did you call authenticate first?');
-    }
-
     await this.validateCompleteTransaction(options);
 
     const { UID, totalAmount, totalQuantity, txid, securityCode } = options;
