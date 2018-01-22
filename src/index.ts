@@ -122,7 +122,8 @@ export class OneEpay {
           headers: { authentication }
         }
       );
-      this.accessToken = response.data.access_token;
+      log('axios response data', response.data);
+      this.accessToken = response.data.accessToken;
       log('access token', this.accessToken);
     } catch (error) {
       this.handleOneEpayError(error);
