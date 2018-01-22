@@ -23,6 +23,7 @@ export class OneEpay {
     try {
       // required
       const order_id = options.UID;
+      log('order Id', order_id);
       const total_amt = `${options.totalAmount}`;
       const total_qty = options.totalQuantity;
       const orderName = `Order #${order_id}.`;
