@@ -23,6 +23,7 @@ export class OneEpay {
     try {
       // required
       const order_id = options.UID;
+      log('order Id', order_id);
       const total_amt = `${options.totalAmount}`;
       const total_qty = options.totalQuantity;
       const orderName = `Order #${order_id}.`;
@@ -122,7 +123,8 @@ export class OneEpay {
           headers: { authentication }
         }
       );
-      this.accessToken = response.data.access_token;
+      log('axios response data', response.data);
+      this.accessToken = response.data.accessToken;
       log('access token', this.accessToken);
     } catch (error) {
       this.handleOneEpayError(error);
