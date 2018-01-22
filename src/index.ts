@@ -115,7 +115,8 @@ export class OneEpay {
         apiEndpoint,
         {
           client_id: this.clientId,
-          permission: 'client_credentials'
+          permission: 'client_credentials',
+          signature: authentication
         },
         {
           headers: { authentication }
@@ -154,13 +155,15 @@ export class OneEpay {
       UID: 'required|string',
       totalAmount: 'required|string|is_money',
       totalQuantity: 'required|integer',
-      paymentCode: 'required|in:ABA,ACD,PNG,WIG,WIG_VPN',
+      paymentCode: 'required|in:ABA,ACD,PNG,WIG,WIG_VPN,LUY',
       paymentOptions: 'required|object',
       'paymentOptions.accountType': 'required_when:paymentCode,ACD',
       'paymentOptions.account': 'required_when:paymentCode,ACD',
       'paymentOptions.paygoId': 'required_when:paymentCode,PNG',
       'paymentOptions.wingAccount': 'required_when:paymentCode,WIG_VPN|string',
-      'paymentOptions.wingSecurityCode': 'required_when:paymentCode,WIG_VPN|string'
+      'paymentOptions.wingSecurityCode': 'required_when:paymentCode,WIG_VPN|string',
+      'paymentOptions.initiator_alias': 'required_when:paymentCode,LUY|string',
+      'paymentOptions.pin': 'required_when:paymentCode,LUY|string'
     };
     const messages = {
       required: '{{field}} field is missing.',
@@ -169,7 +172,7 @@ export class OneEpay {
       is_money: '{{field}} contains invalid amount.',
       object: '{{field}} must be an object.',
       required_when: '{{field}} field is missing.',
-      'paymentCode.in': '{{field}} must be of value ABA, ACD, PNG, WIG, or WIG_VPN.'
+      'paymentCode.in': '{{field}} must be of value ABA, ACD, PNG, WIG, LUY, or WIG_VPN.'
     };
     await indicative.validate(options, rules, messages).catch((errors: any) => {
       throw new CreateTransactionError(errors[0].message);
